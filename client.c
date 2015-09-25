@@ -81,7 +81,7 @@ int main(int argc, char *argv[]){
     test_err(test,0);
     
     test = atoi(buffer);
-    if (test < 0){
+    if (test == -1){
       //then client number sent to the server is valid
     
       bzero(buffer,sizeof(buffer));
@@ -99,6 +99,8 @@ int main(int argc, char *argv[]){
       
       printf("Message from the server: %s",buffer);
     }
+    else if(test == -2)
+      printf("Maximum of 5 connections reached! Try again later.\n");
     else
       printf("Invalid client number!\n");
     

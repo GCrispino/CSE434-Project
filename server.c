@@ -21,8 +21,9 @@
 
 //functions
 int search_no(int client_number,int *connections);//search a client number in the array to check if it already exists.
-void add_no(int client_number,int *connections,int *nconnections);//adds a number to the array of client numbers.
-void remove_number(int client_number,int *connections,int *nconnections);//remove a number of the array of the client number after client connection ends.
+void add_no(int client_number,int *connections);//adds a number to the array of client numbers.
+void remove_number(int client_number,int *connections);//remove a number of the array of the client number after client connection ends.
+int getNumberOfConnections(int *connections);//gets the current number of established connections.
 
 //global variables
 int *connections,nconnections = 0;//array that contains the client numbers(two client with the same number cannot be connected at the same time)
@@ -83,67 +84,79 @@ int main(int argc, char *argv[]){
       
       cli_socket = accept(serv_socket,(struct sockaddr *)&client_addr,&client_len);
       
-      //if (nconnections < 5)
-      if (cli_socket == -1){
-	  printf("Error on accept() function!\n");
-	  exit(0);
-      }
-      else{
-	//reads client number from client
-	test = read(cli_socket,buffer,sizeof(buffer));
-	  
-	if (test == -1){
-	    printf("Error on read() function!\n");
+      if (getNumberOfConnections(connections) < MAXCONNECTIONS){//checks if maximum number of connections was reached
+	
+	if (cli_socket == -1){
+	    printf("Error on accept() function!\n");
 	    exit(0);
-	}
-	
-	
-	if (atoi(buffer)){
-	    //if the passed string is a number
-	    search = search_no(atoi(buffer),connections);
-	    if (search < 0){
-	      client_number = atoi(buffer);
-	      add_no(client_number,connections,&nconnections);
-	      printf("Client number: %d\n",client_number);
-	    }
-	    else
-	      printf("Invalid client number!\n");
-	    
-	    //write search variable content to buffer
-	    sprintf(buffer,"%d",search);
-	    test = write(cli_socket,buffer,strlen(buffer));
 	}
 	else{
-	  printf("Invalid client number!\n");
-	  exit(0);
-	}
-	
-	child_proc = fork();//creates child process to handle client requests
-	
-	if (!child_proc){
-	  if (search >= 0)//if client number is invalid, the child process is terminated
-	    exit(0);
-	  
-	  printf("Connection with client socket %d established!\n",client_number);
-	
-	  bzero(buffer,sizeof(buffer));
-	  
+	  //reads client number from client
 	  test = read(cli_socket,buffer,sizeof(buffer));
-	  
+	    
 	  if (test == -1){
-	    printf("Error on read() function!\n");
+	      printf("Error on read() function!\n");
+	      exit(0);
+	  }
+	  
+	  
+	  if (atoi(buffer)){
+	      //if the passed string is a number
+	      search = search_no(atoi(buffer),connections);
+	      if (search < 0){
+		client_number = atoi(buffer);
+		add_no(client_number,connections);
+		printf("nconnections: %d\n",getNumberOfConnections(connections));
+		printf("Client number: %d\n",client_number);
+	      }
+	      else
+		printf("Invalid client number!\n");
+	      
+	      //write search variable content to buffer
+	      sprintf(buffer,"%d",search);
+	      test = write(cli_socket,buffer,strlen(buffer));
+	  }
+	  else{
+	    printf("Invalid client number!\n");
 	    exit(0);
 	  }
 	  
-	  printf("Message from client %d: %s",client_number,buffer);
+	  child_proc = fork();//creates child process to handle client requests
 	  
-	  printf("Connection with client socket %d terminated!\n",client_number);
-	  write(cli_socket,"Goodbye client\n",15);
+	  if (!child_proc){
+	    if (search >= 0)//if client number is invalid, the child process is terminated
+	      exit(0);
+	    
+	    printf("Connection with client socket %d established!\n",client_number);
 	  
-	  remove_number(client_number,connections,&nconnections);
-	  
+	    bzero(buffer,sizeof(buffer));
+	    
+	    test = read(cli_socket,buffer,sizeof(buffer));
+	    
+	    if (test == -1){
+	      printf("Error on read() function!\n");
+	      exit(0);
+	    }
+	    
+	    printf("Message from client %d: %s",client_number,buffer);
+	    
+	    printf("Connection with client socket %d terminated!\n",client_number);
+	    write(cli_socket,"Goodbye client\n",15);
+	    
+	    remove_number(client_number,connections);
+	    
+	  }
 	}
+	
       }
+      else{
+	printf("Maximum of 5 connections reached! Try again later.\n");
+	
+	//server writes "-2" value to buffer, which indicates that the maximum number of connections was reached
+	sprintf(buffer,"%d",-2);
+	test = write(cli_socket,buffer,strlen(buffer));
+      }
+      
     }
     
     close(cli_socket);
@@ -165,20 +178,27 @@ int search_no(int client_number,int *connections){
     return -1;
 }
 
-void add_no(int client_number,int *connections,int *nconnections){
+void add_no(int client_number,int *connections){
   int i;
   
   for (i = 0;i < MAXCONNECTIONS;i++)
     if (!connections[i]){
       connections[i] = client_number;
-      *(nconnections)++;
       break;
     }
 }
 
-void remove_number(int client_number,int *connections,int *nconnections){
-  int pos = search_no(client_number,connections,nconnections);
-  if (pos == -1)
-    *(nconnections)--;
+void remove_number(int client_number,int *connections){
+  int pos = search_no(client_number,connections);
   connections[pos] = 0;
+}
+
+int getNumberOfConnections(int *connections){
+  int nconnections = 0,i; 
+  
+  for (i = 0;i < MAXCONNECTIONS;i++)
+    if (connections[i] != 0)
+      nconnections++;
+    
+    return nconnections;
 }

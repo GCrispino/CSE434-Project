@@ -1,5 +1,5 @@
  
-maximum of 5 clients is permitted(check with "nconnections" variable)
+maximum of 5 clients is permitted(check with "nconnections" variable) //DONE
 print server messages on client too
 series of requests: 
   - server will ask if client has another request(Y or N)
