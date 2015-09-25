@@ -13,6 +13,10 @@
 #include <sys/types.h>
 #include <netdb.h>
 
+#define MAXSIZE 50 //maximum size of some strings used on the program
+
+//BEGINNING OF FILE WORKS ON LINE 96
+
 //function that verifies errors after some functions
 void test_err(int test,int type){
   //if type is 0, its a read() function. Otherwise, its a write() function
@@ -33,7 +37,44 @@ void test_err(int test,int type){
   
 }
 
-//WORK ON THE SERIES OF REQUEST ON PROGRESS(LINE 104)!!!
+
+/*function that gets user input("str") and puts the filename string into "filename" variable, 
+ *and the mode('R' or 'W') int "mode" variable 
+*/
+void getNameMode(char * str, char filename[][MAXSIZE], char * mode){
+  int i,flag_name = 1,flag_mode = 0;  
+  
+  for (i = 0; i < strlen(str);i++){
+    
+    if (str[i] == ','){
+      flag_name = 0;
+      flag_mode = 1;
+    }
+    
+    if (flag_name)
+      //get the characters for the file name
+      (*filename)[i] = str[i];
+    else if (flag_mode){
+      //get the character for the mode
+      *mode = toupper(str[i + 1]);
+      break;
+    }
+    
+  }
+}
+
+//prints message that says what mode(read or write) the program is
+void message(char mode){
+  char md[10];
+  
+  if (mode == 'R')
+    strcpy(md,"reading");
+  else
+    strcpy(md,"writing");
+  
+  printf("You are on the %s mode!\n",md);
+  getchar();
+}
 
 int main(int argc, char *argv[]){
     //argument checking
@@ -45,6 +86,9 @@ int main(int argc, char *argv[]){
     int client_number,port_number,cli_socket,test;
   
     char buffer[255];
+    
+    char filename[MAXSIZE],mode;
+    
     char ans;//saves a value that answers if the client wants to make another request or not
     
     //structures used in the program
@@ -90,8 +134,23 @@ int main(int argc, char *argv[]){
       
 	bzero(buffer,sizeof(buffer));
 	
-	printf("Please enter the message to send to the server: ");
-	fgets(buffer,sizeof(buffer),stdin);
+	//printf("Please enter the message to send to the server: ");
+	
+	//!!!!!!!!!!!!NEED SOME WORK HERE!!!!!!!!!!!!!!
+	do{
+	  printf("Please enter you request in the following format: <filename>,<mode>: ");
+	  fgets(buffer,sizeof(buffer),stdin);
+	  
+	  getNameMode(buffer,&filename,&mode);
+	  
+	  if (mode != 'R' && mode != 'W'){
+	    printf("Invalid mode!");
+	    getchar();
+	  }
+	  
+	}while(mode != 'R' && mode != 'W');
+	
+	message(mode);
 	
 	test = write(cli_socket,buffer,strlen(buffer));
 	

@@ -4,7 +4,6 @@
 // Project Part: 1
 // Time Spent: 
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -26,8 +25,8 @@ int getNumberOfConnections(int *connections);//gets the current number of establ
 
 //global variables
 int *connections,nconnections = 0;//array that contains the client numbers(two client with the same number cannot be connected at the same time)
-
-//WORK ON THE SERIES OF REQUEST ON PROGRESS(LINE 140)!!!
+char *readlock[50];//array that controls the readlocks for the files
+char *writelock[50];//array that controls the writelocks for the files
 
 int main(int argc, char *argv[]){
     int serv_socket,cli_socket;//socket file descriptor
@@ -37,6 +36,8 @@ int main(int argc, char *argv[]){
     int client_number;
     int search;//result of search_no() function
     pid_t child_proc;//variable that contains the pid number for the child processes created after the connection establishment
+    
+    FILE * file;
     
     char buffer[255];
     
@@ -54,6 +55,7 @@ int main(int argc, char *argv[]){
     
     bzero((char *) &serv_addr, sizeof(serv_addr));
     
+    //initializes the "connections" array
     connections = mmap(0,MAXCONNECTIONS * sizeof(int),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
     
     memset(connections,0,50*sizeof(int));//initialize the "connections" array with zeros
@@ -144,7 +146,6 @@ int main(int argc, char *argv[]){
 	      //writes to client the same message that was received, so it can see it on the other side
 	      write(cli_socket,buffer,sizeof(buffer));
 	      
-	      //WE HAVE TO DO SOME WORK HERE!!!
 	      
 	      printf("Waiting for client %d response...\n",client_number);
 	      test = read(cli_socket,buffer,sizeof(buffer));
