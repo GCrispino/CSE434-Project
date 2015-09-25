@@ -97,15 +97,26 @@ int main(int argc, char *argv[]){
 	
 	test_err(test,1);
 	
+	//reads message that was sent
 	test = read(cli_socket,buffer,sizeof(buffer));
 	
 	test_err(test,0);
 	
+	//prints the message the server got
 	printf("Message from the server: %s",buffer);
 	
-	printf("Do you want to send another request?\n");
-	scanf("%c",&ans);
-	ans = toupper(ans);
+	do{
+	  printf("Do you want to send another request(Y or N)?\n");
+	  ans = getchar();
+	  ans = toupper(ans);
+	  
+	  getchar();
+	  
+	  if (ans != 'Y' && ans != 'N'){
+	    printf("Invalid input!\n");
+	    getchar();
+	  }
+	}while(ans != 'Y' && ans != 'N');
 	
 	buffer[0] = ans;
 	

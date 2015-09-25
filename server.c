@@ -5,7 +5,6 @@
 // Time Spent: 
 
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -142,6 +141,7 @@ int main(int argc, char *argv[]){
 	      
 	      printf("Message from client %d: %s",client_number,buffer);
 	      
+	      //writes to client the same message that was received, so it can see it on the other side
 	      write(cli_socket,buffer,sizeof(buffer));
 	      
 	      //WE HAVE TO DO SOME WORK HERE!!!
@@ -157,8 +157,7 @@ int main(int argc, char *argv[]){
 	      ans = buffer[0];
 	      
 	      if (ans == 'N'){
-		
-		/*printf("Connection with client socket %d terminated!\n",client_number);
+		printf("Connection with client socket %d terminated!\n",client_number);/*
 		write(cli_socket,"Goodbye client\n",15);*/
 		
 		remove_number(client_number,connections);
