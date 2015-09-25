@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/types.h>
@@ -32,6 +33,7 @@ void test_err(int test,int type){
   
 }
 
+//WORK ON THE SERIES OF REQUEST ON PROGRESS(LINE 104)!!!
 
 int main(int argc, char *argv[]){
     //argument checking
@@ -43,6 +45,7 @@ int main(int argc, char *argv[]){
     int client_number,port_number,cli_socket,test;
   
     char buffer[255];
+    char ans;//saves a value that answers if the client wants to make another request or not
     
     //structures used in the program
     struct hostent *server;//structure used to handle the server hostname
@@ -82,22 +85,37 @@ int main(int argc, char *argv[]){
     
     test = atoi(buffer);
     if (test == -1){
-      //then client number sent to the server is valid
-    
-      bzero(buffer,sizeof(buffer));
+      do{
+	//then client number sent to the server is valid
       
-      printf("Please enter the message to send to the server: ");
-      fgets(buffer,sizeof(buffer),stdin);
-      
-      test = write(cli_socket,buffer,strlen(buffer));
-      
-      test_err(test,1);
-      
-      test = read(cli_socket,buffer,sizeof(buffer));
-      
-      test_err(test,0);
-      
-      printf("Message from the server: %s",buffer);
+	bzero(buffer,sizeof(buffer));
+	
+	printf("Please enter the message to send to the server: ");
+	fgets(buffer,sizeof(buffer),stdin);
+	
+	test = write(cli_socket,buffer,strlen(buffer));
+	
+	test_err(test,1);
+	
+	test = read(cli_socket,buffer,sizeof(buffer));
+	
+	test_err(test,0);
+	
+	printf("Message from the server: %s",buffer);
+	
+	printf("Do you want to send another request?\n");
+	scanf("%c",&ans);
+	ans = toupper(ans);
+	
+	buffer[0] = ans;
+	
+	test = write(cli_socket,buffer,strlen(buffer));
+	
+	test_err(test,1);
+	
+	if (ans == 'N')
+	  break;
+      }while(ans == 'Y');
     }
     else if(test == -2)
       printf("Maximum of 5 connections reached! Try again later.\n");

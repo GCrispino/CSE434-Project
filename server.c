@@ -28,8 +28,7 @@ int getNumberOfConnections(int *connections);//gets the current number of establ
 //global variables
 int *connections,nconnections = 0;//array that contains the client numbers(two client with the same number cannot be connected at the same time)
 
-
-//MISSING VERIFICATION ON THE NUMBER OF CLIENTS!!!!!!!!!!!!!
+//WORK ON THE SERIES OF REQUEST ON PROGRESS(LINE 140)!!!
 
 int main(int argc, char *argv[]){
     int serv_socket,cli_socket;//socket file descriptor
@@ -41,6 +40,8 @@ int main(int argc, char *argv[]){
     pid_t child_proc;//variable that contains the pid number for the child processes created after the connection establishment
     
     char buffer[255];
+    
+    char ans;//saves a value that answers if the client wants to make another request or not
     
     struct sockaddr_in serv_addr,client_addr;
     
@@ -124,32 +125,51 @@ int main(int argc, char *argv[]){
 	  child_proc = fork();//creates child process to handle client requests
 	  
 	  if (!child_proc){
-	    if (search >= 0)//if client number is invalid, the child process is terminated
-	      exit(0);
+	    do{
+	      if (search >= 0)//if client number is invalid, the child process is terminated
+		exit(0);
+	      
+	      printf("Connection with client socket %d established!\n",client_number);
 	    
-	    printf("Connection with client socket %d established!\n",client_number);
-	  
-	    bzero(buffer,sizeof(buffer));
+	      bzero(buffer,sizeof(buffer));
+	      
+	      test = read(cli_socket,buffer,sizeof(buffer));
+	      
+	      if (test == -1){
+		printf("Error on read() function!\n");
+		exit(0);
+	      }
+	      
+	      printf("Message from client %d: %s",client_number,buffer);
+	      
+	      write(cli_socket,buffer,sizeof(buffer));
+	      
+	      //WE HAVE TO DO SOME WORK HERE!!!
+	      
+	      printf("Waiting for client %d response...\n",client_number);
+	      test = read(cli_socket,buffer,sizeof(buffer));
+	      
+	      if (test == -1){
+		printf("Error on read() function!\n");
+		exit(0);
+	      }
+	      
+	      ans = buffer[0];
+	      
+	      if (ans == 'N'){
+		
+		/*printf("Connection with client socket %d terminated!\n",client_number);
+		write(cli_socket,"Goodbye client\n",15);*/
+		
+		remove_number(client_number,connections);
+	      }
 	    
-	    test = read(cli_socket,buffer,sizeof(buffer));
-	    
-	    if (test == -1){
-	      printf("Error on read() function!\n");
-	      exit(0);
-	    }
-	    
-	    printf("Message from client %d: %s",client_number,buffer);
-	    
-	    printf("Connection with client socket %d terminated!\n",client_number);
-	    write(cli_socket,"Goodbye client\n",15);
-	    
-	    remove_number(client_number,connections);
-	    
+	    }while(ans == 'Y');
 	  }
 	}
 	
       }
-      else{
+      else{//if  number of connections is already 5
 	printf("Maximum of 5 connections reached! Try again later.\n");
 	
 	//server writes "-2" value to buffer, which indicates that the maximum number of connections was reached
