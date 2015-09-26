@@ -12,6 +12,7 @@
 #include <strings.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include <dirent.h>
 
 #define MAXSIZE 50 //maximum size of some strings used on the program
 
@@ -34,6 +35,7 @@ void test_err(int test,int type){
     printf("Error on %s() function!\n",s);
     exit(0);
   } 
+
   
 }
 
@@ -63,6 +65,25 @@ void getNameMode(char * str, char filename[][MAXSIZE], char * mode){
   }
 }
 
+//this function does the type of operation described by "mode"(reading or writing) on the file which name is "filename"
+void file_operation(char * filename,char mode,int sockfd){
+  
+  FILE *file;  
+  int test;
+  
+  if (mode == 'R'){
+    //fopen(filename,"r");
+
+    test = write(sockfd,filename,sizeof(filename));
+    test_err(test,1);
+    
+  }
+  else{
+    fopen(filename,"w");    
+  }
+  
+}
+
 //prints message that says what mode(read or write) the program is
 void message(char mode){
   char md[10];
@@ -75,6 +96,9 @@ void message(char mode){
   printf("You are on the %s mode!\n",md);
   getchar();
 }
+
+//!!!!!MISSING FILE OPERATIONS ON file_operation FUNCTION!!!!!
+
 
 int main(int argc, char *argv[]){
     //argument checking
@@ -150,19 +174,32 @@ int main(int argc, char *argv[]){
 	  
 	}while(mode != 'R' && mode != 'W');
 	
+	
+	//puts "mode" content in "buffer" variable
+	sprintf(buffer,"%c",mode);
+	
+	//write mode of operation to the server
+	test = write(cli_socket,buffer,strlen(buffer));
+	
+	test_err(test,1);
+	
 	message(mode);
 	
-	test = write(cli_socket,buffer,strlen(buffer));
+	//file_operation(filename,mode);
+	
+	
+	//---------IMPORTANT-----------
+	/*test = write(cli_socket,buffer,strlen(buffer));
 	
 	test_err(test,1);
 	
 	//reads message that was sent
 	test = read(cli_socket,buffer,sizeof(buffer));
 	
-	test_err(test,0);
+	test_err(test,0);*/
 	
 	//prints the message the server got
-	printf("Message from the server: %s",buffer);
+	printf("Message from the server: %s\n",buffer);
 	
 	do{
 	  printf("Do you want to send another request(Y or N)?\n");

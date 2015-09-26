@@ -13,22 +13,32 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <signal.h>
+#include <dirent.h>
 
 #define TRUE 1
 #define MAXCONNECTIONS 5
+#define MAXSIZE 50
 
 //functions
 int search_no(int client_number,int *connections);//search a client number in the array to check if it already exists.
 void add_no(int client_number,int *connections);//adds a number to the array of client numbers.
 void remove_number(int client_number,int *connections);//remove a number of the array of the client number after client connection ends.
 int getNumberOfConnections(int *connections);//gets the current number of established connections.
+void showFilesDirectory();//shows all the files within the program directory
+void initializeLockArray(char array[][MAXSIZE]);//function used to initialize write and read lock arrays with empty strings.
+int search_file(char * filename, char array[][MAXSIZE]);//searches for filename in "filename" in the "array" array.
+void add_file(char * filename, char array[][MAXSIZE]);//adds a file name to a lock array.
+void file_operation(char mode,int sockfd);//this function does the type of operation described by "mode"(reading or writing).
 
 //global variables
 int *connections,nconnections = 0;//array that contains the client numbers(two client with the same number cannot be connected at the same time)
-char *readlock[50];//array that controls the readlocks for the files
-char *writelock[50];//array that controls the writelocks for the files
+char readlock[MAXSIZE][MAXSIZE];//array that controls the readlocks for the files
+char writelock[MAXSIZE][MAXSIZE];//array that controls the writelocks for the files
 
-int main(int argc, char *argv[]){
+//!!!!!MISSING FILE OPERATIONS ON file_operation FUNCTION!!!!!
+
+int main(int argc, char *argv[]){   
+  
     int serv_socket,cli_socket;//socket file descriptor
     int portno;//portnumber
     int client_len;//Contains the size of the "client_addr" structure. Used on the "accept()" function.
@@ -42,6 +52,7 @@ int main(int argc, char *argv[]){
     char buffer[255];
     
     char ans;//saves a value that answers if the client wants to make another request or not
+    char mode;
     
     struct sockaddr_in serv_addr,client_addr;
     
@@ -55,10 +66,18 @@ int main(int argc, char *argv[]){
     
     bzero((char *) &serv_addr, sizeof(serv_addr));
     
+    //ARRAY INITIALIZATIONS:
+    
     //initializes the "connections" array
     connections = mmap(0,MAXCONNECTIONS * sizeof(int),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
     
-    memset(connections,0,50*sizeof(int));//initialize the "connections" array with zeros
+    //initialize the "connections" array with zeros
+    memset(connections,0,50*sizeof(int));
+    
+    //initializes "readlock" and "writelock" arrays
+    initializeLockArray(readlock);
+    initializeLockArray(writelock);
+    
     
     serv_socket = socket(AF_INET,SOCK_STREAM,0);
     
@@ -134,7 +153,23 @@ int main(int argc, char *argv[]){
 	    
 	      bzero(buffer,sizeof(buffer));
 	      
+	      //reads mode of operation from the client
 	      test = read(cli_socket,buffer,sizeof(buffer));
+	      
+	      if (test == -1){
+		printf("Error on read() function!\n");
+		exit(0);
+	      }	      
+	      
+	      mode = buffer[0];
+	      
+	      printf("Mode of operation: %c\n",mode);
+	      
+	      
+	      file_operation(mode,cli_socket);
+	      
+	      //------IMPORTANT----------
+	      /*test = read(cli_socket,buffer,sizeof(buffer));
 	      
 	      if (test == -1){
 		printf("Error on read() function!\n");
@@ -145,6 +180,7 @@ int main(int argc, char *argv[]){
 	      
 	      //writes to client the same message that was received, so it can see it on the other side
 	      write(cli_socket,buffer,sizeof(buffer));
+	      */
 	      
 	      
 	      printf("Waiting for client %d response...\n",client_number);
@@ -221,4 +257,90 @@ int getNumberOfConnections(int *connections){
       nconnections++;
     
     return nconnections;
+}
+
+void showFilesDirectory(){  
+  
+  DIR * dir = opendir(".");
+  struct dirent * entry;//represents the next directory entry
+  
+  
+  while(entry = readdir(dir)){
+    
+    if (entry)
+      printf("%s\n",entry->d_name);
+    
+  }
+  
+  closedir(dir);
+}
+
+void initializeLockArray(char array[][MAXSIZE]){
+  int i;
+  
+  for (i = 0;i < MAXSIZE;i++){
+    strcpy(array[i],"");
+    printf("%s\n",array[i]);
+  }
+ 
+}
+
+int search_file(char * filename, char array[][MAXSIZE]){
+  int i;
+  
+  for (i = 0;i < MAXSIZE;i++)
+    if (!strcmp(array[i],filename))
+      //found "filename" in the array
+      return i;
+  
+  //didn't find the desired string
+  return -1;
+}
+
+void add_file(char * filename, char array[][MAXSIZE]){
+  int i;
+  
+  for (i = 0;i < MAXCONNECTIONS;i++)
+    if (!strcmp(array[i],"")){
+      strcpy(array[i],filename);
+      break;
+    }  
+}
+
+void file_operation(char mode,int sockfd){
+  
+  char filename[MAXSIZE];
+  FILE * file;
+  int test;
+  
+  if (mode == 'R'){
+    
+    test = read(sockfd,filename,sizeof(filename));
+    
+    if (test == -1){
+      printf("Error on read() function!\n");
+      exit(0);      
+    }
+    
+    if (search_file(filename,writelock))
+      printf("File is being used by other client!(write lock)\n");
+    else{
+      add_file(filename,writelock);
+    }   
+    
+    
+    file = fopen(filename,"r");
+    
+    if (file == NULL){
+      printf("File not found!\n");
+      getchar();
+    }
+  
+  }
+  else{
+    
+    
+  }
+  
+  
 }
