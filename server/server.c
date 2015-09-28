@@ -311,9 +311,11 @@ void file_operation(char mode,int sockfd){
   
   char filename[MAXSIZE],buff[BUFSIZ];
   FILE * file;
-  int test,lock,len;
+  int test,lock,count = 0;
+  ssize_t len;
   
   bzero(filename,sizeof(filename));
+  printf("Sizeof filename: %ld\n",sizeof(filename));
   
   if (mode == 'R'){
     //if the client chooses reading mode
@@ -344,21 +346,27 @@ void file_operation(char mode,int sockfd){
 	  lock = 1;//variable used to close the lock afterwards.
 	}
 	
-	while(TRUE){
+	while( (len = fread(buff,1,sizeof(buff),file)) ){
 	  //file transmission
+	  printf("Count: %d\n",count);
 	  
-	  len = fread(buff,1,sizeof(buff),file);
+	  printf("len: %ld\n",len);
 	  
-	  if (!len)
+	  /*if (!len){
 	    strcpy(buff,"EOF");
+	    break;
+	  }*/
 	  
-	  test = write(sockfd,buff,sizeof(buff));
+	  test = write(sockfd,buff,len);
+	  
+	  printf("Number of bytes written: %d\n",test);
 	  
 	  if (test == -1){
-	      printf("Error on read() function!\n");
+	      printf("Error on write() function!\n");
 	      exit(0);
 	  }
 	  
+	  count++;
 	}
 	
 	

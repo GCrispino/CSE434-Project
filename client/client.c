@@ -17,7 +17,7 @@
 #define MAXSIZE 50 //maximum size of some strings used on the program
 #define TRUE 1
 
-//BEGINNING OF FILE WORKS ON LINE 96
+//PROBLEM ON FILE TRANSMISSION
 
 //function that verifies errors after some functions
 void test_err(int test,int type){
@@ -72,30 +72,45 @@ void getNameMode(char * str, char filename[][MAXSIZE], char * mode){
 void file_operation(char *filename,char mode,int sockfd){
   
   FILE *file;  
-  int test;
+  ssize_t len,test;
   char buff[BUFSIZ];
+  int count = 0;
   
   bzero(buff,sizeof(buff));
   
   if (mode == 'R'){
-    file = fopen(filename,"r");    
+    file = fopen(filename,"wb");    
     
     //writes file name to server
-    test = write(sockfd,filename,MAXSIZE);
-    test_err(test,1);
+    len = write(sockfd,filename,MAXSIZE);
+    test_err(len,1);
     
     
-    while(TRUE){
+    while( (len = read(sockfd,buff,sizeof(buff)) )){
       //client receives the file here
+      printf("Count: %d\n\n",count);
       
-      test = read(sockfd,buff,sizeof(buff));
       
-      if (test)
-	if (!strcmp(buff,"EOF"))//if reading from the file ends, the server will send a string with the content "EOF"
+      //printf("buff: %s. Sizeof buff: %ld\n",buff,sizeof(buff));
+      printf("len: %ld\n",len);
+      //if (test){
+	/*if (!strcmp(buff,"EOF")){//if reading from the file ends, the server will send a string with the content "EOF"
+	  printf("\n\nHEY\n\n");
 	  break;
-	else
-	  fwrite(buff,1,sizeof(buff),file);    
+	}
+	else//otherwise,t it will write the content to the copy file*/
+      test = fwrite(buff,1,len,file);    
+      test_err(test,1);
       
+      printf("Number of bytes written: %ld\n",test);
+      //}
+      //else
+	//error
+	//test_err(test,0);
+	
+      //if (!len) break;
+	
+      count++;
     }
       
   }
