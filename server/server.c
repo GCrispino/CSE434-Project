@@ -24,7 +24,7 @@ int search_no(int client_number,int *connections);//search a client number in th
 void add_no(int client_number,int *connections);//adds a number to the array of client numbers.
 void remove_number(int client_number,int *connections);//remove a number of the array of the client number after client connection ends.
 int getNumberOfConnections(int *connections);//gets the current number of established connections.
-void showFilesDirectory();//shows all the files within the program directory
+void getFilesDirectory(char * str);//shows all the files within the program directory
 void initializeLockArray(char array[][MAXSIZE]);//function used to initialize write and read lock arrays with empty strings.
 int search_file(char * filename, char array[][MAXSIZE]);//searches for filename in "filename" in the "array" array.
 void add_file(char * filename, char array[][MAXSIZE]);//adds a file name to a lock array.
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]){
     
     FILE * file;
     
-    char buffer[255];
+    char buffer[255],buffer2[512];
     
     char ans;//saves a value that answers if the client wants to make another request or not
     char mode;
@@ -152,6 +152,10 @@ int main(int argc, char *argv[]){
 	      printf("Connection with client socket %d established!\n",client_number);
 	    
 	      bzero(buffer,sizeof(buffer));
+	      
+	      //writes directory files' names to the client:
+	      getFilesDirectory(buffer2);
+	      test = write(cli_socket,buffer2,sizeof(buffer2));
 	      
 	      //reads mode of operation from the client
 	      test = read(cli_socket,buffer,sizeof(buffer));
@@ -259,18 +263,27 @@ int getNumberOfConnections(int *connections){
     return nconnections;
 }
 
-void showFilesDirectory(){  
+  
+void getFilesDirectory(char * str){//reads the names of the files in the directory the program is running and saves it into "str"
   
   DIR * dir = opendir(".");
   struct dirent * entry;//represents the next directory entry
+  char tmp[MAXSIZE];
+  
+  strcpy(str,"");
   
   
-  while(entry = readdir(dir))
-    if (entry)
-      printf("%s\n",entry->d_name);
+  while(entry = readdir(dir)){
+    
+    if (entry){
+      sprintf(tmp,"%s\n",entry->d_name);
+      strcat(str,tmp);
+    }
+    
+  }
   
   closedir(dir);
-}
+} 
 
 void initializeLockArray(char array[][MAXSIZE]){
   int i;
@@ -311,8 +324,8 @@ void file_operation(char mode,int sockfd){
   
   char filename[MAXSIZE],buff[BUFSIZ];
   FILE * file;
-  int test,lock,count = 0;
-  ssize_t len;
+  int lock,count = 0;
+  ssize_t len,test;
   
   bzero(filename,sizeof(filename));
   printf("Sizeof filename: %ld\n",sizeof(filename));
@@ -335,7 +348,7 @@ void file_operation(char mode,int sockfd){
     else{
       //otherwise, it can read the file.
       
-      file = fopen(filename,"r");
+      file = fopen(filename,"rb");
       
       if (file == NULL)
 	printf("\n\nFile not found!\n\n");
@@ -346,20 +359,15 @@ void file_operation(char mode,int sockfd){
 	  lock = 1;//variable used to close the lock afterwards.
 	}
 	
-	while( (len = fread(buff,1,sizeof(buff),file)) ){
+	while( (len = fread(buff,sizeof(char),sizeof(buff),file)) ){
 	  //file transmission
 	  printf("Count: %d\n",count);
 	  
 	  printf("len: %ld\n",len);
 	  
-	  /*if (!len){
-	    strcpy(buff,"EOF");
-	    break;
-	  }*/
-	  
 	  test = write(sockfd,buff,len);
 	  
-	  printf("Number of bytes written: %d\n",test);
+	  printf("Number of bytes written: %ld\n",test);
 	  
 	  if (test == -1){
 	      printf("Error on write() function!\n");

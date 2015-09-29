@@ -78,7 +78,7 @@ void file_operation(char *filename,char mode,int sockfd){
   
   bzero(buff,sizeof(buff));
   
-  if (mode == 'R'){
+  if (mode == 'R'){//reading mode
     file = fopen(filename,"wb");    
     
     //writes file name to server
@@ -90,31 +90,18 @@ void file_operation(char *filename,char mode,int sockfd){
       //client receives the file here
       printf("Count: %d\n\n",count);
       
-      
-      //printf("buff: %s. Sizeof buff: %ld\n",buff,sizeof(buff));
       printf("len: %ld\n",len);
-      //if (test){
-	/*if (!strcmp(buff,"EOF")){//if reading from the file ends, the server will send a string with the content "EOF"
-	  printf("\n\nHEY\n\n");
-	  break;
-	}
-	else//otherwise,t it will write the content to the copy file*/
-      test = fwrite(buff,1,len,file);    
+      
+      test = fwrite(buff,sizeof(char),len,file);    
       test_err(test,1);
       
       printf("Number of bytes written: %ld\n",test);
-      //}
-      //else
-	//error
-	//test_err(test,0);
-	
-      //if (!len) break;
-	
+     
       count++;
     }
       
   }
-  else{
+  else{//writing mode
     fopen(filename,"w");    
   }
   
@@ -145,7 +132,7 @@ int main(int argc, char *argv[]){
   
     int client_number,port_number,cli_socket,test;
   
-    char buffer[255];
+    char buffer[255],buffer2[512];
     
     char filename[MAXSIZE],mode;
     
@@ -193,8 +180,13 @@ int main(int argc, char *argv[]){
 	//then client number sent to the server is valid
       
 	bzero(buffer,sizeof(buffer));
+	bzero(buffer2,sizeof(buffer2));
 	
 	//printf("Please enter the message to send to the server: ");
+	//reads the directory files' names to the client:
+	test = read(cli_socket,buffer2,sizeof(buffer2));
+	
+	printf("Files located at server directory:\n %s\n",buffer2);
 	
 	//!!!!!!!!!!!!NEED SOME WORK HERE!!!!!!!!!!!!!!
 	do{
