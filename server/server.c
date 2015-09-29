@@ -70,6 +70,8 @@ int main(int argc, char *argv[]){
     
     //initializes the "connections" array
     connections = mmap(0,MAXCONNECTIONS * sizeof(int),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
+    //readlock = mmap(0,MAXCONNECTIONS * sizeof(char *),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
+    //writelock = mmap(0,MAXCONNECTIONS * sizeof(char *),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
     
     //initialize the "connections" array with zeros
     memset(connections,0,50*sizeof(int));
@@ -169,23 +171,7 @@ int main(int argc, char *argv[]){
 	      
 	      printf("Mode of operation: %c\n",mode);
 	      
-	      
-	      file_operation(mode,cli_socket);
-	      
-	      //------IMPORTANT----------
-	      /*test = read(cli_socket,buffer,sizeof(buffer));
-	      
-	      if (test == -1){
-		printf("Error on read() function!\n");
-		exit(0);
-	      }
-	      
-	      printf("Message from client %d: %s",client_number,buffer);
-	      
-	      //writes to client the same message that was received, so it can see it on the other side
-	      write(cli_socket,buffer,sizeof(buffer));
-	      */
-	      
+	      file_operation(mode,cli_socket);	      
 	      
 	      printf("Waiting for client %d response...\n",client_number);
 	      test = read(cli_socket,buffer,sizeof(buffer));
@@ -288,6 +274,8 @@ void getFilesDirectory(char * str){//reads the names of the files in the directo
 void initializeLockArray(char array[][MAXSIZE]){
   int i;
   
+  //readlock = mmap(0,MAXCONNECTIONS * sizeof(char),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
+  
   for (i = 0;i < MAXSIZE;i++)
     strcpy(array[i],"");
  
@@ -329,12 +317,10 @@ void file_operation(char mode,int sockfd){
   
   bzero(filename,sizeof(filename));
   bzero(buff,sizeof(buff));
+  printf("Filename: %s\n",filename);
   printf("Sizeof filename: %ld\n",sizeof(filename));
   
-  if (mode == 'R'){
-    //if the client chooses reading mode
-    
-    test = read(sockfd,filename,sizeof(filename));
+  test = read(sockfd,filename,sizeof(filename));
     
     if (test == -1){
       printf("Error on read() function!\n");
@@ -342,6 +328,9 @@ void file_operation(char mode,int sockfd){
     }
     
     printf("File name: %s\n",filename);
+  
+  if (mode == 'R'){
+    //if the client chooses reading mode
     
     if (search_file(filename,writelock) >= 0)
       //if there is a writelock, a client cannot read or write the file.
@@ -389,6 +378,37 @@ void file_operation(char mode,int sockfd){
   }
   else{
     //if the client chooses writing mode
+    
+    bzero(buff,sizeof(buff));
+    
+    file = fopen(filename,"wb");
+      
+      if (search_file(filename,readlock) >= 0 || search_file(filename,writelock) >= 0)
+	printf("File has a lock! Try again later.\n");
+      else if (search_file(filename,writelock) < 0){
+	add_file(filename,writelock);
+	lock = 1;
+      }
+      
+      
+      while( (len = read(sockfd,buff,sizeof(buff)) )){
+	//server receives the file here
+	printf("Count: %d\n\n",count);
+	
+	printf("len: %ld\n",len);
+	
+	test = fwrite(buff,sizeof(char),len,file);    
+	if (test == -1){
+	  printf("Error on fwrite() function!\n");
+	  exit(0);
+	}
+	
+	if (len == 0 || len != BUFSIZ) break;
+	
+	printf("Number of bytes written: %ld\n",test);
+      
+	count++;
+      }
     
   }
   

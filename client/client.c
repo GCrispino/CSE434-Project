@@ -17,114 +17,19 @@
 #define MAXSIZE 50 //maximum size of some strings used on the program
 #define TRUE 1
 
-//PROBLEM ON FILE TRANSMISSION
-
 //function that verifies errors after some functions
-void test_err(int test,int type){
-  //if type is 0, its a read() function. Otherwise, its a write() function
-  
-  char s[20];
-  
-  if (test)
-    return;
-  else{
-    if (type)
-      strcpy(s,"write");
-    else
-      strcpy(s,"read");
-    
-    printf("Error on %s() function!\n",s);
-    exit(0);
-  } 
-
-  
-}
-
+void test_err(int test,int type);
 
 /*function that gets user input("str") and puts the filename string into "filename" variable, 
  *and the mode('R' or 'W') int "mode" variable 
 */
-void getNameMode(char * str, char filename[][MAXSIZE], char * mode){
-  int i,flag_name = 1,flag_mode = 0;  
-  
-  for (i = 0; i < strlen(str);i++){
-    
-    if (str[i] == ','){
-      flag_name = 0;
-      flag_mode = 1;
-      
-      (*filename)[i] = '\0';
-    }
-    
-    if (flag_name)
-      //get the characters for the file name
-      (*filename)[i] = str[i];
-    else if (flag_mode){
-      //get the character for the mode
-      *mode = toupper(str[i + 1]);
-      break;
-    } 
-  }
-  
-}
+void getNameMode(char * str, char filename[][MAXSIZE], char * mode);
 
 //this function does the type of operation described by "mode"(reading or writing) on the file which name is "filename"
-void file_operation(char *filename,char mode,int sockfd){
-  
-  FILE *file;  
-  ssize_t len,test;
-  char buff[BUFSIZ];
-  int count = 0;
-  
-  bzero(buff,sizeof(buff));
-  
-  if (mode == 'R'){//reading mode
-    file = fopen(filename,"wb");    
-    
-    //writes file name to server
-    len = write(sockfd,filename,MAXSIZE);
-    test_err(len,1);
-    
-    
-    while( (len = read(sockfd,buff,sizeof(buff)) )){
-      //client receives the file here
-      printf("Count: %d\n\n",count);
-      
-      printf("len: %ld\n",len);
-      
-      test = fwrite(buff,sizeof(char),len,file);    
-      test_err(test,1);
-      
-      if (len == 0 || len != BUFSIZ) break;
-      
-      printf("Number of bytes written: %ld\n",test);
-     
-      count++;
-    }
-      
-  }
-  else{//writing mode
-    fopen(filename,"rb");    
-  }
-  
-  fclose(file);
-}
+void file_operation(char *filename,char mode,int sockfd);
 
 //prints message that says what mode(read or write) the program is
-void message(char mode){
-  char md[10];
-  
-  if (mode == 'R')
-    strcpy(md,"reading");
-  else
-    strcpy(md,"writing");
-  
-  printf("You are on the %s mode!\n",md);
-  getchar();
-}
-
-//!!!!!MISSING FILE OPERATIONS ON file_operation FUNCTION!!!!!
-
+void message(char mode);
 
 int main(int argc, char *argv[]){
     //argument checking
@@ -221,17 +126,6 @@ int main(int argc, char *argv[]){
 	
 	file_operation(filename,mode,cli_socket);
 	
-	
-	//---------IMPORTANT-----------
-	/*test = write(cli_socket,buffer,strlen(buffer));
-	
-	test_err(test,1);
-	
-	//reads message that was sent
-	test = read(cli_socket,buffer,sizeof(buffer));
-	
-	test_err(test,0);*/
-	
 	//prints the message the server got
 	printf("Message from the server: %s\n",buffer);
 	
@@ -267,4 +161,121 @@ int main(int argc, char *argv[]){
     close(cli_socket);
     
     return 0;
+}
+
+void test_err(int test,int type){
+  //if type is 0, its a read() function. Otherwise, its a write() function
+  
+  char s[20];
+  
+  if (test)
+    return;
+  else{
+    if (type)
+      strcpy(s,"write");
+    else
+      strcpy(s,"read");
+    
+    printf("Error on %s() function!\n",s);
+    exit(0);
+  } 
+}
+
+void message(char mode){
+  char md[10];
+  
+  if (mode == 'R')
+    strcpy(md,"reading");
+  else
+    strcpy(md,"writing");
+  
+  printf("You are on the %s mode!\n",md);
+  getchar();
+}
+
+void getNameMode(char * str, char filename[][MAXSIZE], char * mode){
+  int i,flag_name = 1,flag_mode = 0;  
+  
+  for (i = 0; i < strlen(str);i++){
+    
+    if (str[i] == ','){
+      flag_name = 0;
+      flag_mode = 1;
+      
+      (*filename)[i] = '\0';
+    }
+    
+    if (flag_name)
+      //get the characters for the file name
+      (*filename)[i] = str[i];
+    else if (flag_mode){
+      //get the character for the mode
+      *mode = toupper(str[i + 1]);
+      break;
+    } 
+  }
+  
+}
+
+void file_operation(char *filename,char mode,int sockfd){
+  
+  FILE *file;  
+  ssize_t len,test;
+  char buff[BUFSIZ];
+  int count = 0;
+  
+  bzero(buff,sizeof(buff));
+  
+  //writes file name to server
+  len = write(sockfd,filename,MAXSIZE);
+  test_err(len,1);  
+  
+  if (mode == 'R'){//reading mode
+    file = fopen(filename,"wb");        
+    
+    while( (len = read(sockfd,buff,sizeof(buff)) )){
+      //client receives the file here
+      printf("Count: %d\n\n",count);
+      
+      printf("len: %ld\n",len);
+      
+      test = fwrite(buff,sizeof(char),len,file);    
+      test_err(test,1);
+      
+      if (len == 0 || len != BUFSIZ) break;
+      
+      printf("Number of bytes written: %ld\n",test);
+     
+      count++;
+    }
+      
+  }
+  else{//writing mode
+    file = fopen(filename,"rb");   
+   
+    if (file == NULL)
+      printf("\n\nFile not found!\n\n");
+    else{
+      while( (len = fread(buff,sizeof(char),sizeof(buff),file)) ){
+	//file transmission
+	printf("Count: %d\n",count);
+	    
+	printf("len: %ld\n",len);
+	    
+	test = write(sockfd,buff,len);
+	    
+	printf("Number of bytes written: %ld\n",test);
+	    
+	if (test == -1){
+	  printf("Error on write() function!\n");
+	  exit(0);
+	}
+	    
+	count++;
+      }
+      
+    }
+  }
+  
+  fclose(file);
 }
