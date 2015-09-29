@@ -1,9 +1,8 @@
-// Name of Author(s): Gabriel Nunes Crispino
+// Name of Authors: Gabriel Nunes Crispino and Philippe Daoud Silva
 // Course Number and Name: CSE 434, Computer Networks
 // Semester: Fall 2015
 // Project Part: 2
-// Time Spent: 
-
+// Time Spent: 12h30 min
 
 #include <stdio.h>
 #include <stdlib.h>
