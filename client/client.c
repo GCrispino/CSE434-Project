@@ -1,7 +1,7 @@
 // Name of Author(s): Gabriel Nunes Crispino
 // Course Number and Name: CSE 434, Computer Networks
 // Semester: Fall 2015
-// Project Part: 1
+// Project Part: 2
 // Time Spent: 
 
 
@@ -96,7 +96,6 @@ int main(int argc, char *argv[]){
 	
 	printf("Files located at server directory:\n %s\n",buffer2);
 	
-	//!!!!!!!!!!!!NEED SOME WORK HERE!!!!!!!!!!!!!!
 	do{
 	  mode = ' ';
 	  printf("Please enter you request in the following format: <filename>,<mode>: ");
@@ -125,9 +124,6 @@ int main(int argc, char *argv[]){
 	message(mode);
 	
 	file_operation(filename,mode,cli_socket);
-	
-	//prints the message the server got
-	printf("Message from the server: %s\n",buffer);
 	
 	do{
 	  printf("Do you want to send another request(Y or N)?\n");
@@ -221,7 +217,7 @@ void file_operation(char *filename,char mode,int sockfd){
   
   FILE *file;  
   ssize_t len,test;
-  char buff[BUFSIZ];
+  char buff[BUFSIZ],buffer[255];
   int count = 0;
   
   bzero(buff,sizeof(buff));
@@ -233,38 +229,42 @@ void file_operation(char *filename,char mode,int sockfd){
   if (mode == 'R'){//reading mode
     file = fopen(filename,"wb");        
     
-    while( (len = read(sockfd,buff,sizeof(buff)) )){
-      //client receives the file here
-      printf("Count: %d\n\n",count);
+    //reads flag that indicates if file was found at the server
+    test = read(sockfd,buffer,sizeof(buffer));
+    test_err(test,0);
+    
+    if (buffer[0] == '0')
+      printf("File not found!\n");
+    else if (buffer[0] == '1')
+      while( (len = read(sockfd,buff,sizeof(buff)) )){
+	//client receives the file here
+	
+	test = fwrite(buff,sizeof(char),len,file);    
+	test_err(test,1);
+	
+	if (len == 0 || len != BUFSIZ) break;
       
-      printf("len: %ld\n",len);
-      
-      test = fwrite(buff,sizeof(char),len,file);    
-      test_err(test,1);
-      
-      if (len == 0 || len != BUFSIZ) break;
-      
-      printf("Number of bytes written: %ld\n",test);
-     
-      count++;
-    }
+	count++;
+      }
       
   }
   else{//writing mode
     file = fopen(filename,"rb");   
    
-    if (file == NULL)
+    if (file == NULL){
       printf("\n\nFile not found!\n\n");
+      
+      buffer[0] = '0';
+      test = write(sockfd,buffer,sizeof(buffer));
+    }
     else{
+      buffer[0] = '1';
+      test = write(sockfd,buffer,sizeof(buffer));
+      
       while( (len = fread(buff,sizeof(char),sizeof(buff),file)) ){
 	//file transmission
-	printf("Count: %d\n",count);
-	    
-	printf("len: %ld\n",len);
 	    
 	test = write(sockfd,buff,len);
-	    
-	printf("Number of bytes written: %ld\n",test);
 	    
 	if (test == -1){
 	  printf("Error on write() function!\n");
@@ -277,5 +277,5 @@ void file_operation(char *filename,char mode,int sockfd){
     }
   }
   
-  fclose(file);
+  if (file) fclose(file);
 }

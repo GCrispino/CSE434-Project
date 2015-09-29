@@ -1,7 +1,7 @@
 // Name of Author: Gabriel Nunes Crispino
 // Course Number and Name: CSE 434, Computer Networks
 // Semester: Fall 2015
-// Project Part: 1
+// Project Part: 2
 // Time Spent: 
 
 #include <stdio.h>
@@ -25,17 +25,15 @@ void add_no(int client_number,int *connections);//adds a number to the array of 
 void remove_number(int client_number,int *connections);//remove a number of the array of the client number after client connection ends.
 int getNumberOfConnections(int *connections);//gets the current number of established connections.
 void getFilesDirectory(char * str);//shows all the files within the program directory
-void initializeLockArray(char array[][MAXSIZE]);//function used to initialize write and read lock arrays with empty strings.
-int search_file(char * filename, char array[][MAXSIZE]);//searches for filename in "filename" in the "array" array.
-void add_file(char * filename, char array[][MAXSIZE]);//adds a file name to a lock array.
+void initializeLockArray(char **array);//function used to initialize write and read lock arrays with empty strings.
+int search_file(char * filename, char **array);//searches for filename in "filename" in the "array" array.
+void add_file(char * filename, char **array);//adds a file name to a lock array.
 void file_operation(char mode,int sockfd);//this function does the type of operation described by "mode"(reading or writing).
 
 //global variables
 int *connections,nconnections = 0;//array that contains the client numbers(two client with the same number cannot be connected at the same time)
-char readlock[MAXCONNECTIONS][MAXSIZE];//array that controls the readlocks for the files
-char writelock[MAXCONNECTIONS][MAXSIZE];//array that controls the writelocks for the files
-
-//!!!!!TRANSMISSION IS NOT WORKING!!!!!
+char **readlock;//[MAXCONNECTIONS][MAXSIZE];//array that controls the readlocks for the files
+char **writelock;//[MAXCONNECTIONS][MAXSIZE];//array that controls the writelocks for the files
 
 int main(int argc, char *argv[]){   
   
@@ -70,8 +68,8 @@ int main(int argc, char *argv[]){
     
     //initializes the "connections" array
     connections = mmap(0,MAXCONNECTIONS * sizeof(int),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
-    //readlock = mmap(0,MAXCONNECTIONS * sizeof(char *),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
-    //writelock = mmap(0,MAXCONNECTIONS * sizeof(char *),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
+    readlock = mmap(0,MAXCONNECTIONS * sizeof(char *),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
+    writelock = mmap(0,MAXCONNECTIONS * sizeof(char *),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
     
     //initialize the "connections" array with zeros
     memset(connections,0,50*sizeof(int));
@@ -129,7 +127,7 @@ int main(int argc, char *argv[]){
 	      if (search < 0){
 		client_number = atoi(buffer);
 		add_no(client_number,connections);
-		printf("nconnections: %d\n",getNumberOfConnections(connections));
+		printf("Number of connections: %d\n",getNumberOfConnections(connections));
 		printf("Client number: %d\n",client_number);
 	      }
 	      else
@@ -169,7 +167,10 @@ int main(int argc, char *argv[]){
 	      
 	      mode = buffer[0];
 	      
-	      printf("Mode of operation: %c\n",mode);
+	      if (mode == 'R')
+		printf("Mode of operation: reading\n");
+	      else
+		printf("Mode of operation: writing\n");
 	      
 	      file_operation(mode,cli_socket);	      
 	      
@@ -185,7 +186,6 @@ int main(int argc, char *argv[]){
 	      
 	      if (ans == 'N'){
 		printf("Connection with client socket %d terminated!\n",client_number);
-		//write(cli_socket,"Goodbye client\n",15);
 		
 		remove_number(client_number,connections);
 	      }
@@ -271,17 +271,17 @@ void getFilesDirectory(char * str){//reads the names of the files in the directo
   closedir(dir);
 } 
 
-void initializeLockArray(char array[][MAXSIZE]){
+void initializeLockArray(char **array){
   int i;
   
-  //readlock = mmap(0,MAXCONNECTIONS * sizeof(char),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
-  
-  for (i = 0;i < MAXSIZE;i++)
+  for (i = 0;i < MAXSIZE;i++){
+    array[i] = mmap(0,MAXSIZE * sizeof(char),PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1,0);
     strcpy(array[i],"");
+  }
  
 }
 
-int search_file(char * filename, char array[][MAXSIZE]){
+int search_file(char * filename, char **array){
   int i;
   
   for (i = 0;i < MAXCONNECTIONS;i++)
@@ -293,7 +293,7 @@ int search_file(char * filename, char array[][MAXSIZE]){
   return -1;
 }
 
-void add_file(char * filename, char array[][MAXSIZE]){
+void add_file(char * filename, char **array){
   int i;
   
   for (i = 0;i < MAXCONNECTIONS;i++)
@@ -303,23 +303,25 @@ void add_file(char * filename, char array[][MAXSIZE]){
     }  
 }
 
-void remove_file(char * filename, char array[][MAXSIZE]){
+void remove_file(char * filename, char **array){
   int pos = search_file(filename,array);
-  strcpy(array[pos],"");
+  
+  if (pos >= 0)
+    strcpy(array[pos],"");
 }
 
 void file_operation(char mode,int sockfd){
   
-  char filename[MAXSIZE],buff[BUFSIZ];
+  char filename[MAXSIZE],buff[BUFSIZ],buffer[255];
   FILE * file;
   int lock,count = 0;
+  int pos1,pos2;/////////////////////////////////////
   ssize_t len,test;
   
   bzero(filename,sizeof(filename));
   bzero(buff,sizeof(buff));
-  printf("Filename: %s\n",filename);
-  printf("Sizeof filename: %ld\n",sizeof(filename));
   
+  //read file name from socket
   test = read(sockfd,filename,sizeof(filename));
     
     if (test == -1){
@@ -332,17 +334,33 @@ void file_operation(char mode,int sockfd){
   if (mode == 'R'){
     //if the client chooses reading mode
     
-    if (search_file(filename,writelock) >= 0)
+    if (search_file(filename,writelock) >= 0){
       //if there is a writelock, a client cannot read or write the file.
       printf("File is being used by other client!(write lock)\n");
+      printf("pos1: %d. Pos2: %d\n",pos1,pos2);
+    }
     else{
       //otherwise, it can read the file.
       
       file = fopen(filename,"rb");
       
-      if (file == NULL)
+      bzero(buffer,sizeof(buffer));
+      
+      if (file == NULL){
 	printf("\n\nFile not found!\n\n");
-      else{      
+	
+	//writes flag that indicates if file was found
+	buffer[0] = '0';
+	test = write(sockfd,buffer,sizeof(buffer));
+	if (test == -1){
+	  printf("Error on write() function!\n");
+	  exit(0);
+	}
+      }
+      else{
+	buffer[0] = '1';
+	test = write(sockfd,buffer,sizeof(buffer));//same thing as in line 355
+	
 	
 	if (search_file(filename,readlock) < 0){//if the file is not on the readlock array, it is put there now.
 	  add_file(filename,readlock);
@@ -351,25 +369,23 @@ void file_operation(char mode,int sockfd){
 	
 	while( (len = fread(buff,sizeof(char),sizeof(buff),file)) ){
 	  //file transmission
-	  printf("Count: %d\n",count);
-	  
-	  printf("len: %ld\n",len);
 	  
 	  test = write(sockfd,buff,len);
-	  
-	  printf("Number of bytes written: %ld\n",test);
 	  
 	  if (test == -1){
 	      printf("Error on write() function!\n");
 	      exit(0);
 	  }
 	  
+	  if (len == 0 || len != BUFSIZ) break;
+	  
 	  count++;
 	}
 	
 	
 	if (lock)//if this client opened the lock, it will be the one who will closes it.
-	  remove_file(filename,writelock);
+	  remove_file(filename,readlock);
+	
       }
     }   
     
@@ -381,36 +397,41 @@ void file_operation(char mode,int sockfd){
     
     bzero(buff,sizeof(buff));
     
-    file = fopen(filename,"wb");
-      
-      if (search_file(filename,readlock) >= 0 || search_file(filename,writelock) >= 0)
-	printf("File has a lock! Try again later.\n");
-      else if (search_file(filename,writelock) < 0){
-	add_file(filename,writelock);
-	lock = 1;
-      }
-      
-      
-      while( (len = read(sockfd,buff,sizeof(buff)) )){
-	//server receives the file here
-	printf("Count: %d\n\n",count);
+    //reads flag that indicates if file was found at the server
+    test = read(sockfd,buffer,sizeof(buffer));
+    
+    printf("buffer[0]: %c",buffer[0]);
+    
+    if (buffer[0] == '1'){
+      file = fopen(filename,"wb");
 	
-	printf("len: %ld\n",len);
-	
-	test = fwrite(buff,sizeof(char),len,file);    
-	if (test == -1){
-	  printf("Error on fwrite() function!\n");
-	  exit(0);
+	if ( (pos1 = search_file(filename,readlock) >= 0) || (pos2 = search_file(filename,writelock) >= 0)){
+	  printf("File has a lock! Try again later.\n");
+	  printf("pos1: %d. Pos2: %d\n",pos1,pos2);
+	}
+	else if (search_file(filename,writelock) < 0){
+	  add_file(filename,writelock);
+	  lock = 1;
 	}
 	
-	if (len == 0 || len != BUFSIZ) break;
 	
-	printf("Number of bytes written: %ld\n",test);
-      
-	count++;
-      }
+	while( (len = read(sockfd,buff,sizeof(buff)) )){
+	  //server receives the file here
+	  
+	  test = fwrite(buff,sizeof(char),len,file);    
+	  if (test == -1){
+	    printf("Error on fwrite() function!\n");
+	    exit(0);
+	  }
+	  
+	  if (len == 0 || len != BUFSIZ) break;
+	
+	  count++;
+	}
+	
+    }
     
   }
   
-  fclose(file);
+  if (file) fclose(file);
 }
