@@ -328,6 +328,7 @@ void file_operation(char mode,int sockfd){
   ssize_t len,test;
   
   bzero(filename,sizeof(filename));
+  bzero(buff,sizeof(buff));
   printf("Sizeof filename: %ld\n",sizeof(filename));
   
   if (mode == 'R'){
@@ -391,5 +392,5 @@ void file_operation(char mode,int sockfd){
     
   }
   
-  
+  fclose(file);
 }

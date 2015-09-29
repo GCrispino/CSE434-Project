@@ -95,6 +95,8 @@ void file_operation(char *filename,char mode,int sockfd){
       test = fwrite(buff,sizeof(char),len,file);    
       test_err(test,1);
       
+      if (len == 0 || len != BUFSIZ) break;
+      
       printf("Number of bytes written: %ld\n",test);
      
       count++;
@@ -102,9 +104,10 @@ void file_operation(char *filename,char mode,int sockfd){
       
   }
   else{//writing mode
-    fopen(filename,"w");    
+    fopen(filename,"rb");    
   }
   
+  fclose(file);
 }
 
 //prints message that says what mode(read or write) the program is
@@ -190,6 +193,7 @@ int main(int argc, char *argv[]){
 	
 	//!!!!!!!!!!!!NEED SOME WORK HERE!!!!!!!!!!!!!!
 	do{
+	  mode = ' ';
 	  printf("Please enter you request in the following format: <filename>,<mode>: ");
 	  fgets(buffer,sizeof(buffer),stdin);
 	  
